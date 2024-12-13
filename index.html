@@ -1,143 +1,180 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Estadísticas de Alumnos</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      margin: 20px;
-    }
-    textarea {
-      width: 100%;
-      height: 200px;
-      margin-bottom: 10px;
-    }
-    button, input {
-      padding: 10px 20px;
-      font-size: 16px;
-      cursor: pointer;
-      margin: 5px 0;
-    }
-    #resultados {
-      margin-top: 20px;
-      white-space: pre-wrap;
-    }
-  </style>
+  <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body>
-  <h1>Estadísticas de Alumnos</h1>
 
-  <p>Pega tu JSON o carga un archivo CSV:</p>
+<body class="bg-gray-100 p-4">
+  <h1 class="text-2xl font-bold mb-4">Estadísticas de Alumnos</h1>
+  <p class="mb-4">Pega hasta tres JSON diferentes o proporciona un enlace para cargar los datos:</p>
 
-  <!-- Entrada de JSON -->
-  <textarea id="jsonInput" placeholder="Pega tu JSON aquí..."></textarea>
-  <br>
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+    <div class="json-section">
+      <h2 class="text-lg font-semibold mb-2">JSON 1</h2>
+      <textarea id="jsonInput1" class="w-full h-32 p-2 border rounded"
+        placeholder="Pega tu primer JSON aquí..."></textarea>
+      <input id="jsonUrl1" type="url" class="w-full mt-2 p-2 border rounded"
+        placeholder="O introduce un enlace al JSON...">
+      <button onclick="fetchJson(1)" class="mt-2 px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600">Cargar
+        JSON desde enlace</button>
+    </div>
+    <div class="json-section">
+      <h2 class="text-lg font-semibold mb-2">JSON 2</h2>
+      <textarea id="jsonInput2" class="w-full h-32 p-2 border rounded"
+        placeholder="Pega tu segundo JSON aquí..."></textarea>
+      <input id="jsonUrl2" type="url" class="w-full mt-2 p-2 border rounded"
+        placeholder="O introduce un enlace al JSON...">
+      <button onclick="fetchJson(2)" class="mt-2 px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600">Cargar
+        JSON desde enlace</button>
+    </div>
+    <div class="json-section">
+      <h2 class="text-lg font-semibold mb-2">JSON 3</h2>
+      <textarea id="jsonInput3" class="w-full h-32 p-2 border rounded"
+        placeholder="Pega tu tercer JSON aquí..."></textarea>
+      <input id="jsonUrl3" type="url" class="w-full mt-2 p-2 border rounded"
+        placeholder="O introduce un enlace al JSON...">
+      <button onclick="fetchJson(3)" class="mt-2 px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600">Cargar
+        JSON desde enlace</button>
+    </div>
+  </div>
 
-  <!-- Subir archivo CSV -->
-  <input type="file" id="fileInput" accept=".csv" onchange="procesarCSV(event)">
-  <br>
+  <button onclick="calcularEstadisticas()"
+    class="mt-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">Calcular Estadísticas</button>
 
-  <!-- Botón para calcular -->
-  <button onclick="calcularEstadisticas()">Calcular Estadísticas</button>
-
-  <!-- Resultados -->
-  <div id="resultados"></div>
+  <div id="resultados" class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6"></div>
 
   <script>
-    let alumnos = []; // Variable global para almacenar los datos procesados
+    function fetchJson(index) {
+      const urlInput = document.getElementById(`jsonUrl${index}`);
+      const textarea = document.getElementById(`jsonInput${index}`);
+      const url = urlInput.value;
 
-    // Procesar archivo CSV
-    function procesarCSV(event) {
-      const file = event.target.files[0];
-      if (!file) return;
+      if (!url) {
+        alert("Por favor, introduce un enlace válido.");
+        return;
+      }
 
-      const reader = new FileReader();
-      reader.onload = function (e) {
-        const csvData = e.target.result;
-        alumnos = csvToJson(csvData);
-        alert("Archivo CSV procesado correctamente. ¡Ahora puedes calcular las estadísticas!");
-      };
-      reader.readAsText(file);
+      fetch(url)
+        .then(response => {
+          if (!response.ok) {
+            throw new Error(`Error al obtener JSON: ${response.statusText}`);
+          }
+          return response.json();
+        })
+        .then(data => {
+          textarea.value = JSON.stringify(data, null, 2);
+        })
+        .catch(error => {
+          alert(`Error al cargar el JSON: ${error.message}`);
+        });
     }
 
-    // Convertir CSV a JSON
-    function csvToJson(csv) {
-      const rows = csv.split("\n").filter(row => row.trim() !== ""); // Dividir por filas y eliminar vacías
-      const headers = rows.shift().split(","); // Separar cabeceras
+    function calcularEstadisticas() {
+      const resultadosDiv = document.getElementById("resultados");
+      resultadosDiv.innerHTML = "";
 
-      return rows.map(row => {
-        const values = row.split(",");
-        return headers.reduce((obj, header, index) => {
-          obj[header.trim()] = isNaN(values[index]) ? values[index].trim() : parseFloat(values[index]); // Convertir números
-          return obj;
-        }, {});
+      const jsonInputs = [
+        document.getElementById("jsonInput1").value,
+        document.getElementById("jsonInput2").value,
+        document.getElementById("jsonInput3").value
+      ];
+
+      jsonInputs.forEach((jsonInput, index) => {
+        const column = document.createElement("div");
+        column.className = "bg-white p-4 rounded shadow";
+
+        if (jsonInput.trim()) {
+          try {
+            const alumnos = JSON.parse(jsonInput);
+            column.innerHTML = `<h3 class='text-xl font-bold mb-2'>JSON ${index + 1}</h3>`;
+            column.innerHTML += `<pre class='text-sm text-gray-700'>${generarEstadisticas(alumnos)}</pre>`;
+          } catch (error) {
+            column.innerHTML = `<h3 class='text-xl font-bold mb-2'>JSON ${index + 1}</h3>`;
+            column.innerHTML += "<p class='text-red-500'>Error: Asegúrate de pegar un JSON válido.</p>";
+          }
+        } else {
+          column.innerHTML = `<h3 class='text-xl font-bold mb-2'>JSON ${index + 1}</h3><p class='text-gray-500'>No se proporcionó JSON.</p>`;
+        }
+
+        resultadosDiv.appendChild(column);
       });
     }
 
-    // Calcular estadísticas
-    function calcularEstadisticas() {
-      const resultadosDiv = document.getElementById("resultados");
-      resultadosDiv.innerHTML = ""; // Limpiar resultados previos
+    function generarEstadisticas(alumnos) {
+      const totalAlumnos = alumnos.length;
+      const grupos = {};
+      let aprobados = 0, reprobados = 0;
+      let sumaFinal = 0, sumaAsistencia = 0;
+      let edadTotal = 0, totalHombres = 0, totalMujeres = 0;
+      let calificacionMax = -Infinity, calificacionMin = Infinity;
 
-      try {
-        // Verificar si se ingresaron datos por JSON
-        const jsonInput = document.getElementById("jsonInput").value;
-        if (jsonInput.trim()) {
-          alumnos = JSON.parse(jsonInput);
+      alumnos.forEach(alumno => {
+        const grupo = alumno.GRUPO;
+        if (!grupos[grupo]) {
+          grupos[grupo] = { total: 0, aprobados: 0, reprobados: 0, sumaFinal: 0, sumaAsistencia: 0 };
         }
 
-        if (alumnos.length === 0) {
-          resultadosDiv.textContent = "No hay datos para procesar. Ingresa un JSON o carga un archivo CSV.";
-          return;
+        grupos[grupo].total++;
+        grupos[grupo].sumaFinal += alumno.FINAL;
+        grupos[grupo].sumaAsistencia += alumno.TOTALASIS;
+
+        if (alumno.Edo === "Aprobado") {
+          grupos[grupo].aprobados++;
+          aprobados++;
+        } else {
+          grupos[grupo].reprobados++;
+          reprobados++;
         }
 
-        // Variables para estadísticas
-        const totalAlumnos = alumnos.length;
-        const grupos = {};
-        let aprobados = 0, reprobados = 0;
+        sumaFinal += alumno.FINAL;
+        sumaAsistencia += alumno.TOTALASIS;
+        edadTotal += alumno.EDAD;
+        if (alumno.SEXO === "M") totalHombres++;
+        if (alumno.SEXO === "F") totalMujeres++;
 
-        // Procesar alumnos
-        alumnos.forEach(alumno => {
-          const grupo = alumno.GRUPO;
+        calificacionMax = Math.max(calificacionMax, alumno.FINAL);
+        calificacionMin = Math.min(calificacionMin, alumno.FINAL);
+      });
 
-          // Inicializar grupo si no existe
-          if (!grupos[grupo]) {
-            grupos[grupo] = { total: 0, aprobados: 0, reprobados: 0 };
-          }
+      const promedioFinalGeneral = (sumaFinal / totalAlumnos).toFixed(2);
+      const promedioAsistenciaGeneral = (sumaAsistencia / totalAlumnos).toFixed(2);
+      const edadPromedio = (edadTotal / totalAlumnos).toFixed(2);
 
-          // Contar en grupo y general
-          grupos[grupo].total++;
-          if (alumno.Edo === "Aprobado") {
-            grupos[grupo].aprobados++;
-            aprobados++;
-          } else {
-            grupos[grupo].reprobados++;
-            reprobados++;
-          }
-        });
+      const gruposOrdenados = Object.keys(grupos).sort();
+      let resultados = `Total de alumnos: ${totalAlumnos}\n`;
 
-        // Generar análisis de texto y resultados
-        let resultados = `Total de alumnos: ${totalAlumnos}\n\n`;
+      gruposOrdenados.forEach(grupo => {
+        const datos = grupos[grupo];
+        const promedioFinalGrupo = (datos.sumaFinal / datos.total).toFixed(2);
+        const promedioAsistenciaGrupo = (datos.sumaAsistencia / datos.total).toFixed(2);
 
-        for (const [grupo, datos] of Object.entries(grupos)) {
-          resultados += `Grupo ${grupo}:\n`;
-          resultados += `  Total: ${datos.total}\n`;
-          resultados += `  Aprobados: ${datos.aprobados} (${((datos.aprobados / datos.total) * 100).toFixed(2)}%)\n`;
-          resultados += `  Reprobados: ${datos.reprobados} (${((datos.reprobados / datos.total) * 100).toFixed(2)}%)\n\n`;
-        }
+        resultados += `Grupo ${grupo}:\n`;
+        resultados += `  Total: ${datos.total}\n`;
+        resultados += `  Aprobados: ${datos.aprobados} (${((datos.aprobados / datos.total) * 100).toFixed(2)}%)\n`;
+        resultados += `  Reprobados: ${datos.reprobados} (${((datos.reprobados / datos.total) * 100).toFixed(2)}%)\n`;
+        resultados += `  Promedio de calificación: ${promedioFinalGrupo}\n`;
+        resultados += `  Promedio de asistencia: ${promedioAsistenciaGrupo}\n`;
+      });
 
-        resultados += `Estadísticas generales:\n`;
-        resultados += `  Aprobados: ${aprobados} (${((aprobados / totalAlumnos) * 100).toFixed(2)}%)\n`;
-        resultados += `  Reprobados: ${reprobados} (${((reprobados / totalAlumnos) * 100).toFixed(2)}%)\n`;
+      resultados += `\nEstadísticas generales:\n`;
+      resultados += `  Aprobados: ${aprobados} (${((aprobados / totalAlumnos) * 100).toFixed(2)}%)\n`;
+      resultados += `  Reprobados: ${reprobados}  Aprobados: ${aprobados} (${((aprobados / totalAlumnos) * 100).toFixed(2)}%)\n  Reprobados: ${reprobados} 
+(${((reprobados / totalAlumnos) * 100).toFixed(2)}%)\n`;
+      resultados += `  Promedio de calificación general: ${promedioFinalGeneral}\n`;
+      resultados += `  Promedio de asistencia general: ${promedioAsistenciaGeneral}\n`;
+      resultados += `  Edad promedio: ${edadPromedio}\n`;
+      resultados += `  Total hombres: ${totalHombres}\n`;
+      resultados += `  Total mujeres: ${totalMujeres}\n`;
+      resultados += `  Calificación máxima: ${calificacionMax}\n`;
+      resultados += `  Calificación mínima: ${calificacionMin}\n`;
 
-        // Mostrar resultados
-        resultadosDiv.textContent = resultados;
-      } catch (error) {
-        resultadosDiv.textContent = "Error: Asegúrate de pegar un JSON válido o cargar un archivo CSV correcto.";
-      }
+      return resultados;
     }
   </script>
 </body>
+
 </html>
